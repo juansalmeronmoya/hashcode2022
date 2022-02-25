@@ -2,5 +2,5 @@ from setuptools import setup
 from Cython.Build import cythonize
 
 setup(
-    ext_modules = cythonize("solve.py")
+    ext_modules = cythonize("solve_x.py")
 )

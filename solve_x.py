@@ -4,9 +4,9 @@ base_path = "/content/sample_data/f_find_great_mentors.in.txt"
 base_path = "./mentorship_input_data/a_an_example.in.txt"
 base_path = "./mentorship_input_data/b_better_start_small.in.txt"
 base_path = "./mentorship_input_data/c_collaboration.in.txt"
-base_path = "./mentorship_input_data/d_dense_schedule.in.txt"
-base_path = "./mentorship_input_data/e_exceptional_skills.in.txt"
-base_path = "./mentorship_input_data/f_find_great_mentors.in.txt"
+# base_path = "./mentorship_input_data/d_dense_schedule.in.txt"
+# base_path = "./mentorship_input_data/e_exceptional_skills.in.txt"
+# base_path = "./mentorship_input_data/f_find_great_mentors.in.txt"
 
 input_file = open(base_path, 'r')
 input_file_lines = input_file.readlines()
@@ -50,20 +50,21 @@ for _ in range(n_projects):
 ## LOGIC
 
 def score_project(project, completion_time):
-  extra_days = completion_time - project['best_before']
-  return project['score'] - extra_days if (project['score'] - extra_days > 0) else 0
+    extra_days = completion_time - project['best_before']
+    return project['score'] - extra_days if (project['score'] - extra_days > 0) else 0
 
 
-def get_min_contributor(rol, lvl, available_contributors, cforProject):
+def get_min_contributor(rol, lvl, avble_contribs, contrib_already_assigned_to_this_project):
     return_contributor = None
     minLvl = None
-    for contributorId, rols in available_contributors:
+    for contributorId, rols in avble_contribs:
         if rol in rols \
-                and contributorId not in cforProject \
+                and contributorId not in contrib_already_assigned_to_this_project \
                 and lvl <= rols[rol]:
             if minLvl is None or rols[rol] < minLvl:
                 minLvl = rols[rol]
                 return_contributor = (contributorId, rols)
+                avble_contribs.remove(return_contributor)
     # contributor['usedSkill'] = rol
     return return_contributor
 
@@ -80,14 +81,15 @@ def get_contributors_for_project(project, available_contributors):
             return None
     return cforProject
 
+
 def evolve_dev(dev, role, ongoing_project):
     if dev[1][role[0]] == role[1]:
-        dev[1][role[0]] = dev[1][role[0]]+1
+        dev[1][role[0]] = dev[1][role[0]] + 1
     return dev
 
 
 sorted_projects = [(project, project_info) for project, project_info in projects.items()]
-#sorted_projects = sorted_projects.sort(key=lambda x: (x[1]['best_before']-x[1]['days'], x['score']), reverse=(False, True))
+# sorted_projects = sorted_projects.sort(key=lambda x: (x[1]['best_before']-x[1]['days'], x['score']), reverse=(False, True))
 
 pending_projects = sorted_projects
 available_contributors = [(name, cont_skills) for name, cont_skills in contributors.items()]
@@ -95,14 +97,19 @@ ongoing_projects, completed_projects = [], []
 day = 0
 try:
     while len(pending_projects) > 0 or len(ongoing_projects) > 0:
-        pending_projects = [p for p in pending_projects if score_project(p[1], day+p[1]['days']) > 0]
+        print('day: ' + str(day) + ' => ' + str(len(pending_projects)) +
+              " Pending projects," + str(len(ongoing_projects)) +
+              " Ongoing Projects")
+
+        pending_projects = [p for p in pending_projects if score_project(p[1], day + p[1]['days']) > 0]
 
         # Check if any ongoing project has finished
         completed_projects_today = []
         for ongoing_project in ongoing_projects:
             if ongoing_project['completion_day'] == day:
                 completed_projects_today.append(ongoing_project)
-                ongoing_project['devs'] = [evolve_dev(dev, role, ongoing_project) for dev, role in zip(ongoing_project['devs'], ongoing_project['roles'])]
+                ongoing_project['devs'] = [evolve_dev(dev, role, ongoing_project) for dev, role in
+                                           zip(ongoing_project['devs'], ongoing_project['roles'])]
                 available_contributors.extend(ongoing_project['devs'])
 
         for completed_project_today in completed_projects_today:
@@ -113,22 +120,30 @@ try:
         assigned_projects = []
         for pending_project in pending_projects:
             assigned_devs = get_contributors_for_project(pending_project, available_contributors)
-            if assigned_devs is None:
-                continue
-
-            assigned_projects.append(pending_project[0])
-            ongoing_projects.append({
-                'name': pending_project[0],
-                'roles': pending_project[1]['roles'],
-                'devs': assigned_devs,
-                'completion_day': day + pending_project[1]['days']
-            })
+            if assigned_devs is not None:
+                assigned_projects.append(pending_project[0])
+                ongoing_projects.append({
+                    'name': pending_project[0],
+                    'roles': pending_project[1]['roles'],
+                    'devs': assigned_devs,
+                    'completion_day': day + pending_project[1]['days']
+                })
 
         pending_projects = [p for p in pending_projects if p[0] not in assigned_projects]
-        day += 1
+
+        # update
+
+        # go to next planned day we will finnish a project and free some contributors
+        # due to every single contributor is busy, there is no option to start
+        # new projects until contributors are ready again
+        min_day_until_next_prject_liberation = \
+            min([p['completion_day'] for p in ongoing_projects]) if len(ongoing_projects) > 0 else -1
+
+        # End solver if are no pending projects that can be done and are no available contributors to free
+        if min_day_until_next_prject_liberation is -1: break
+        day = min_day_until_next_prject_liberation
 finally:
     ## OUTPUT
-
     executed_projects = [(p['name'], [d[0] for d in p['devs']]) for p in completed_projects]
     n_executed_projects = len(executed_projects)
     output_lines = [f"{n_executed_projects}\n"]
