@@ -13,10 +13,25 @@ TOTAL 1621060
 
 ### Offline Max Qualification:
 
-A
-B
-C
-D
-E
-F
-TOTAL
+A 0
+B 0
+C 0
+D 0
+E 0
+F 0
+TOTAL 0
+
+
+### Build with Cython
+
+Create venv
+install Cython dep
+run 
+```shell
+python setup.py build_ext --inplace
+```
+
+in a python console:
+```python
+import solve_x
+```
