@@ -3,7 +3,7 @@ from os import path
 base_path = "/content/sample_data/f_find_great_mentors.in.txt"
 base_path = "./mentorship_input_data/a_an_example.in.txt"
 base_path = "./mentorship_input_data/b_better_start_small.in.txt"
-base_path = "./mentorship_input_data/c_collaboration.in.txt"
+#base_path = "./mentorship_input_data/c_collaboration.in.txt"
 # base_path = "./mentorship_input_data/d_dense_schedule.in.txt"
 # base_path = "./mentorship_input_data/e_exceptional_skills.in.txt"
 # base_path = "./mentorship_input_data/f_find_great_mentors.in.txt"
@@ -64,25 +64,24 @@ def get_min_contributor(rol, lvl, avble_contribs, contrib_already_assigned_to_th
             if minLvl is None or rols[rol] < minLvl:
                 minLvl = rols[rol]
                 return_contributor = (contributorId, rols)
-                avble_contribs.remove(return_contributor)
     # contributor['usedSkill'] = rol
     return return_contributor
 
 
-def get_contributors_for_project(project, available_contributors):
+def get_contributors_for_project(project, available_contributors_):
     cforProject = []
     cforProjectId = []
     for rol in project[1]['roles']:
-        contributor = get_min_contributor(rol[0], rol[1], available_contributors, cforProjectId)
+        contributor = get_min_contributor(rol[0], rol[1], available_contributors_, cforProjectId)
         if contributor is not None:
             cforProject.append(contributor)
             cforProjectId.append(contributor[0])
         else:
-            return None
+            cforProject = None
     return cforProject
 
 
-def evolve_dev(dev, role, ongoing_project):
+def evolve_dev(dev, role):
     if dev[1][role[0]] == role[1]:
         dev[1][role[0]] = dev[1][role[0]] + 1
     return dev
@@ -108,7 +107,7 @@ try:
         for ongoing_project in ongoing_projects:
             if ongoing_project['completion_day'] == day:
                 completed_projects_today.append(ongoing_project)
-                ongoing_project['devs'] = [evolve_dev(dev, role, ongoing_project) for dev, role in
+                ongoing_project['devs'] = [evolve_dev(dev, role) for dev, role in
                                            zip(ongoing_project['devs'], ongoing_project['roles'])]
                 available_contributors.extend(ongoing_project['devs'])
 
@@ -128,6 +127,8 @@ try:
                     'devs': assigned_devs,
                     'completion_day': day + pending_project[1]['days']
                 })
+                for dev in assigned_devs:
+                    available_contributors.remove(dev)
 
         pending_projects = [p for p in pending_projects if p[0] not in assigned_projects]
 
@@ -136,12 +137,12 @@ try:
         # go to next planned day we will finnish a project and free some contributors
         # due to every single contributor is busy, there is no option to start
         # new projects until contributors are ready again
-        min_day_until_next_prject_liberation = \
+        day_when_first_project_finnish = \
             min([p['completion_day'] for p in ongoing_projects]) if len(ongoing_projects) > 0 else -1
 
         # End solver if are no pending projects that can be done and are no available contributors to free
-        if min_day_until_next_prject_liberation is -1: break
-        day = min_day_until_next_prject_liberation
+        if day_when_first_project_finnish == -1: break
+        day = day_when_first_project_finnish
 finally:
     ## OUTPUT
     executed_projects = [(p['name'], [d[0] for d in p['devs']]) for p in completed_projects]
